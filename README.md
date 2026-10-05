@@ -1,34 +1,86 @@
-# 🧠 Agentic RAG System
+<div align="center">
+  <h1>🧠 Agentic RAG System</h1>
+  <p><i>A highly autonomous, self-correcting Retrieval-Augmented Generation engine.</i></p>
+  
+  [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
+  [![LangGraph](https://img.shields.io/badge/LangGraph-Multi--Agent-orange.svg)](https://python.langchain.com/docs/langgraph/)
+  [![Ollama](https://img.shields.io/badge/Ollama-100%25%20Local-white.svg)](https://ollama.com/)
+  [![Streamlit](https://img.shields.io/badge/Streamlit-UI-red.svg)](https://streamlit.io/)
+</div>
 
-A highly autonomous, multi-agent Retrieval-Augmented Generation (RAG) system built with **LangGraph**, **Streamlit**, and **Ollama**. This system doesn't just retrieve documents—it analyzes intents, plans execution steps, routes traffic dynamically, writes and corrects its own SQL queries, and fuses information from multiple sources to provide grounded answers.
+---
 
-## ✨ Key Features
+## 🌟 Overview
 
-- **Multi-Agent Architecture**: Orchestrated via LangGraph (Analyzer, Planner, Executors, Reasoner, Checker).
-- **Dynamic Routing**: Intelligently bypasses expensive database tools for simple queries (e.g., greetings) to provide instant responses.
-- **Enterprise Guardrails**: Automatically detects and politely rejects off-topic or out-of-domain queries.
-- **Self-Healing SQL Agent**: Queries structured data in CockroachDB. If a SQL query fails, the agent reads the database error and corrects its own code on the fly.
-- **Multi-Source Fusion**: Seamlessly combines structured data (SQL), unstructured data (Pinecone Vector Search), and external data (Tavily Web Search).
-- **100% Local Inference**: Powered by local `qwen2.5` via Ollama for privacy-first, offline AI execution.
+The **Agentic RAG System** is not just another standard RAG pipeline that blindly fetches documents. It is a state-of-the-art **Multi-Agent System** that acts like a senior data analyst. 
 
-## 🏗️ Architecture
+When asked a question, it intelligently routes traffic, plans a multi-step execution strategy, writes and debugs its own SQL queries, searches the web for missing context, and strictly audits its own answers before showing them to the user.
 
-1. **Analyzer**: Determines user intent, complexity, and domain relevance.
-2. **Router & Guardrail**: Hijacks the workflow if the query is out-of-domain or doesn't require tools (Direct Response).
-3. **Planner**: Breaks complex queries into parallel execution steps.
-4. **Tools**:
-   - `sql_tool`: LangChain SQL Agent connecting to CockroachDB.
-   - `vector_tool`: Semantic search via Pinecone.
-   - `web_tool`: Real-time web data via Tavily.
-5. **Fusion & Reasoner**: Combines all evidence and generates a grounded draft answer without hallucinating.
-6. **Checker**: Audits the draft. If evidence is missing, it routes back to the planner to try a different tool.
+---
+
+## 🏗️ Full Pipeline Architecture
+
+Below is the complete blueprint of how the LangGraph State Machine orchestrates the AI's thought process:
+
+```mermaid
+graph TD
+    A([User Query]) --> B[🕵️ Analyzer]
+    B --> C{🔀 Dynamic Router}
+    
+    %% Routes
+    C -- "Out of Domain" --> D[🛡️ Guardrail]
+    C -- "No Tools Needed" --> E[⚡ Direct Responder]
+    C -- "Complex Query" --> F[📋 Planner]
+    
+    %% Execution
+    F --> G1[(SQL / CockroachDB)]
+    F --> G2[(Vector / Pinecone)]
+    F --> G3[🌐 Web / Tavily]
+    
+    %% Synthesis
+    G1 --> H[🔗 Fusion Node]
+    G2 --> H
+    G3 --> H
+    
+    H --> I[🧠 Reasoner]
+    I --> J{✅ Checker / Auditor}
+    
+    %% Outcomes
+    J -- "Valid & Grounded" --> K([Final Output])
+    J -- "Missing Data / Error" --> F
+    
+    D --> K
+    E --> K
+    
+    classDef default fill:#1E293B,stroke:#3B82F6,stroke-width:2px,color:#fff;
+    classDef router fill:#3B82F6,stroke:#1D4ED8,color:#fff,stroke-width:2px;
+    classDef tools fill:#0F766E,stroke:#0F766E,color:#fff,stroke-width:2px;
+    
+    class C,J router;
+    class G1,G2,G3 tools;
+```
+
+### 🧠 Agent Explanations
+
+1. **🕵️ Analyzer:** The entry point. It reads the query, determines the user's core intent, classifies the complexity, and decides if external tools are required.
+2. **🔀 Router & 🛡️ Guardrail:** Evaluates the Analyzer's output. If a user asks about an unrelated topic (e.g., cooking recipes), the Guardrail rejects it politely. If it's a simple "Hello", it routes to the fast Direct Responder to save compute time.
+3. **📋 Planner:** The system's architect. It breaks complex questions into a parallel execution plan, determining exactly which tools to query and how.
+4. **🛠️ The Tools:**
+   - **SQL Tool:** Uses LangChain's SQL Agent to query structured metrics from CockroachDB. It is capable of reading schema errors and rewriting its own broken SQL queries on the fly!
+   - **Vector Tool:** Performs semantic search across unstructured data (PDFs/Docs) via Pinecone.
+   - **Web Tool:** Searches the live internet via Tavily to answer questions about current events or external economic factors.
+5. **🔗 Fusion Node:** Aggregates and standardizes the massive amounts of data returned from the parallel tool executions into a single context block.
+6. **🧠 Reasoner:** Synthesizes the fused evidence to construct a comprehensive draft answer. It is strictly prompted *not* to hallucinate outside the provided evidence.
+7. **✅ Checker (Self-Correction):** The QA Auditor. It grades the Reasoner's draft against the original query. If the answer is incomplete, or if the Planner used the wrong tool initially, it fails the check and loops the system backward to try again.
+
+---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 - Python 3.11+
 - [Ollama](https://ollama.com/) (running locally)
-- CockroachDB Cluster (or standard PostgreSQL)
+- CockroachDB Cluster
 - API Keys for Pinecone and Tavily
 
 ### Installation
@@ -45,13 +97,13 @@ A highly autonomous, multi-agent Retrieval-Augmented Generation (RAG) system bui
    ```
 
 3. **Pull the Local LLM:**
-   Make sure Ollama is running in the background, then pull the model:
+   Ensure Ollama is running, then pull the `qwen2.5` model (we recommend `qwen2.5:3b` or `1.5b` for faster local inference):
    ```bash
    ollama pull qwen2.5
    ```
 
 4. **Set up Environment Variables:**
-   Create a `.env` file in the root directory and add your credentials:
+   Create a `.env` file in the root directory:
    ```env
    PINECONE_API_KEY=your_pinecone_key
    TAVILY_API_KEY=your_tavily_key
@@ -65,6 +117,7 @@ Start the Streamlit user interface:
 streamlit run ui/streamlit_app.py
 ```
 
-Open your browser to `http://localhost:8501`. 
+Navigate to `http://localhost:8501` in your browser to begin querying the system.
 
-*(To share with others on your local Wi-Fi, look for the Network URL in your terminal and ensure port `8501` is allowed through your Windows Firewall).*
+---
+*Built with ❤️ utilizing LangGraph's multi-agent paradigm.*
