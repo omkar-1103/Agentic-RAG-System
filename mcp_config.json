@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "cockroachdb": {
+      "command": "python",
+      "args": ["mcp_servers/sql_server.py"]
+    },
+    "pinecone": {
+      "command": "python",
+      "args": ["mcp_servers/vector_server.py"]
+    },
+    "tavily": {
+      "command": "python",
+      "args": ["mcp_servers/web_server.py"]
+    }
+  }
+}

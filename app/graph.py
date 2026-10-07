@@ -12,30 +12,46 @@ from app.agents.checker import checker_node
 from app.agents.direct_responder import direct_responder_node
 from app.agents.guardrail import guardrail_node
 
-# Import tools
-from app.tools.vector_tool import execute_vector_search
-from app.tools.web_tool import execute_web_search
-from app.tools.sql_tool import execute_sql_agent
+# MCP Client replaces hardcoded tool imports
+from app.mcp_client import MCPToolClient
+
+# Map planner tool names to MCP server names and tool names
+MCP_TOOL_MAP = {
+    "sql_tool":    {"server": "cockroachdb", "tool": "execute_query"},
+    "vector_tool": {"server": "pinecone",    "tool": "semantic_search"},
+    "web_tool":    {"server": "tavily",      "tool": "web_search"},
+}
+
+mcp_client = MCPToolClient()
 
 def execute_tools_node(state: GraphState) -> dict:
-    """Reads the plan and executes tools in parallel."""
-    logger.info("---EXECUTING TOOLS---")
+    """Reads the plan and executes tools via MCP protocol."""
+    logger.info("---EXECUTING TOOLS VIA MCP---")
     plan = state.get("plan", [])
     results = []
     
     for step in plan:
         tool_name = step.get("tool")
         query = step.get("query")
+        mapping = MCP_TOOL_MAP.get(tool_name)
         
-        if tool_name == "vector_tool":
-            res = execute_vector_search(query)
-            results.append(res)
-        elif tool_name == "web_tool":
-            res = execute_web_search(query)
-            results.append(res)
-        elif tool_name == "sql_tool":
-            res = execute_sql_agent(query)
-            results.append(res)
+        if mapping:
+            try:
+                result = mcp_client.call_tool_sync(
+                    mapping["server"], mapping["tool"], {"query": query}
+                )
+                results.append({
+                    "source": tool_name,
+                    "query": query,
+                    "results": result
+                })
+            except Exception as e:
+                logger.error(f"[MCP] Error calling {tool_name}: {e}")
+                results.append({
+                    "source": tool_name,
+                    "query": query,
+                    "error": str(e)
+                })
             
     return {"raw_evidence": results}
 
